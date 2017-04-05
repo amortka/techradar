@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css?family=Oswald');
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #f9f9f9;
+  text-align: center;
+}
+
+.container {
+  margin: 0 auto;
+  max-width: 100vh;
+}
+
+.scaling-svg-container {
+  position: relative;
+  height:0;
+  width: 100%;
+  padding: 0;
+  padding-bottom: 100%;
+}
+.scaling-svg {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  left: 0;
+  top:0;
+}
+
+.innerCircle {
+  fill: none;
+  stroke: #cbcbcb;
+  stroke-dasharray: 4 8;
+}
+
+.innerCircleLabelPath {
+  fill: none;
+  stroke: none;
+}
+
+.innerCircleLabel {
+  font-size: 14px;
+  font-family: 'Oswald', sans-serif;
+  fill: #4d4d4d;
+  opacity: 1;
+}
+
+.debug {
+  fill: none;
+  stroke: red;
+}
+
+.segment {
+
+  &.segment-even {
+    fill: #000;
+    opacity: 0.01;
+  }
+
+  &.segment-odd {
+    fill: #000;
+    opacity: 0.05;
+  }
+}
+
+.segmentLabel {
+  font-family: 'Oswald', sans-serif;
+  fill: #4d4d4d;
+  opacity: 1;
+}
+
+.segmentPoint {
+  fill: #FFFFFF;
+  stroke-width: 2px;
+}
+
+.segmentPointOld {
+
+}
+
+.area {
+  //opacity: 0.1;
+}
+
+.areaFill {
+  opacity: 1;
+}
+
+.areaLabelArc {
+  fill: none;
+}
+
+.areaLabel {
+  fill: #fff;
+  font-size: 14px;
+  font-family: 'Oswald', sans-serif;
+}
