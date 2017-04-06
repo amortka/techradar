@@ -29,7 +29,7 @@ html, body {
 }
 
 .debugLayer {
-  opacity: 0;
+//  opacity: 0;
 }
 
 .itemLabel {
@@ -41,6 +41,16 @@ html, body {
 
 .areaFill {
   opacity: 0.5;
+}
+
+.areaLabelArc {
+  fill: none;
+}
+
+.areaLabel {
+  // fill: #fff;
+  font-size: 14px;
+  font-family: 'Oswald', sans-serif;
 }
 
 /*
