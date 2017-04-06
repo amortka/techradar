@@ -28,6 +28,22 @@ html, body {
   top:0;
 }
 
+.debugLayer {
+  opacity: 0;
+}
+
+.itemLabel {
+  font-family: 'Oswald', sans-serif;
+  fill: #4d4d4d;
+  opacity: 1;
+  transform-origin: top right;
+}
+
+.areaFill {
+  opacity: 0.5;
+}
+
+/*
 .innerCircle {
   fill: none;
   stroke: #cbcbcb;
@@ -95,4 +111,4 @@ html, body {
   fill: #fff;
   font-size: 14px;
   font-family: 'Oswald', sans-serif;
-}
+}*/

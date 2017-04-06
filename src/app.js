@@ -1,179 +1,160 @@
 import * as d3 from 'd3';
 import './app.scss';
 
-//const URL = 'https://technology-radar.firebaseio.com/snapshots/PGSNET/august-2016.json';
+// const URL = 'https://technology-radar.firebaseio.com/snapshots/PGSNET/august-2016.json';
 const URL = 'https://technology-radar.firebaseio.com/snapshots/pgs-frontend/march-2017.json';
 
 const AREA_COLORS = ['#2A9D8F', '#E9C46A', '#F4A261', '#E76F51'];
+const PI = 3.14159;
 
 function drawChart(data) {
-    console.log('drawChart data', data);
+    console.log('raw data', data);
 
     const svg = d3.select('#radar');
-    const segAngle = (Math.PI * 2) / data.items.length;
-    const segAngleDeg = 360 / data.items.length;
-
-    const config = getConfig(svg, data);
-
-    const scaleRadial = d3.scaleLinear()
-        .range([0, 2 * Math.PI])
-        .domain([0, data.items.length]);
-
-    const STATUS = [
-        'Adopt',
-        'Trial',
-        'Assess',
-        'Hold'
-    ];
-
-    const scaleYPoint = {
-        'Adopt': 0.6,
-        'Trial': 0.7,
-        'Assess': 0.8,
-        'Hold': 0.9
-    };
+    const config = getConfig(svg, data.items);
 
     let g = svg.append('g')
         .attr('transform', `translate(${config.center.x}, ${config.center.y})`);
 
-    let defs = svg.append('defs');
-
-    defs.append('polygon')
-        .attr('id', 'SYMBOL_TRIANGLE')
-        .attr('fill', 'red')
-        .attr('points', '0,0 5,0 2.5,4.33');
-
-    let SYMBOL_TRIANGLE = d3.symbol().type(d3.symbolTriangle);
-
-
-    /*let innerCircles = g.append('g');
-
-     innerCircles.selectAll('.innerCircle')
-     .data(Object.keys(scaleYPoint).map( p => scaleYPoint[p]))
-     .enter()
-     .append('circle')
-     .attr('class', 'innerCircle')
-     .attr('cx', 0)
-     .attr('cy', 0)
-     .attr('r', 0)
-     .transition()
-     .duration(1500)
-     .ease(d3.easeBounce)
-     .delay((d, idx) => idx * 100)
-     .attr('r', d => (MAX_R * d));
-
-
-     innerCircles.selectAll('.innerCircleLabelPath')
-     .data(Object.keys(scaleYPoint).map( p => scaleYPoint[p]))
-     .enter()
-     .append('path')
-     .attr('class', 'innerCircleLabelPath')
-     .attr('id', (d, idx) => 'innerCircle_' + idx)
-     .attr('d', d => {
-     return `M ${-MAX_R * d},0 A ${-MAX_R * d},${-MAX_R * d} 0 0 1 ${MAX_R * d}, 0`
-     });
-
-
-     // --- area labels: text
-     innerCircles.selectAll('.innerCircleLabel')
-     .data(STATUS)
-     .enter()
-     .append('text')
-     .attr('class', 'innerCircleLabel')
-     .attr('x', 0)
-     .attr('dy', 20)
-     .attr('text-anchor', 'middle')
-     .append('textPath')
-     .attr('xlink:href', (d, idx) => '#innerCircle_' + idx)
-     .attr('startOffset', '50%')
-     .text(d => d);*/
-
-
-
-    drawDebugInfo(g, data, config);
-    drawExternalLabels(g, data.items, config);
-    drawExternalAreaLabels(g, data, config);
-    drawInnerTechnologies(g.data.items, config);
+    drawDebugLayer(g, config);
+    drawItemLabels(g, data.items, config);
+    drawAreaLebels(g, data, config);
 }
 
+// --- draw functions, with update pattern
+function drawDebugLayer(selection, config) {
+    console.log('config', config);
+    let debugGroup = selection.append('g')
+        .attr('class', 'debugLayer');
 
-function drawDebugInfo(selection, data, config) {
-    let group = selection.select('g.debug').empty() ? selection.append('g') : selection.select('g.debug');
+    debugGroup.append('circle')
+        .attr('fill', '#00FFFF')
+        .attr('cx', 0)
+        .attr('cy', 0)
+        .attr('r', 5);
 
-    console.log('config', JSON.stringify(config, false, 2));
 
-    let debuData = [
-        config.maxR,
-        config.circle_area,
-        config.circle_reserved,
-        config.circle_level_inner,
-        config.circle_level_outer
-    ];
+    debugGroup.append('circle')
+        .attr('fill', 'none')
+        .attr('stroke', '#FF00FF')
+        .attr('cx', 0)
+        .attr('cy', 0)
+        .attr('r', config.radiusMax);
 
-    group.selectAll('.debugInfo')
-        .data(debuData)
+    // --- items lines
+    let lineFn = d3.line()
+        .x(d => d[0])
+        .y(d => d[1]);
+
+    let lineData = d3.range(0, config.count).map(n => [
+        [125 * Math.cos(config.scaleRadialPositionWithBaseShift(n)), 125 * Math.sin(config.scaleRadialPositionWithBaseShift(n))],
+        [(config.radiusMax - 10) * Math.cos(config.scaleRadialPositionWithBaseShift(n)), (config.radiusMax - 10) * Math.sin(config.scaleRadialPositionWithBaseShift(n))]
+    ]);
+
+    debugGroup
+        .append('path')
+        .datum([
+            [0, 0],
+            [0, -config.radiusMax]
+        ])
+        .attr('fill', 'none')
+        .attr('stroke', 'blue')
+        .attr('stroke-width', 2)
+        .attr('d', lineFn);
+
+    debugGroup
+        .append('path')
+        .datum([
+            [0, 0],
+            [0, config.radiusMax]
+        ])
+        .attr('fill', 'none')
+        .attr('stroke', 'blue')
+        .attr('stroke-width', 2)
+        .attr('d', lineFn);
+
+
+    debugGroup
+        .append('g')
+        .attr('class', 'debugLines')
+        .selectAll('path')
+        .data(lineData)
         .enter()
-        .append('circle')
-        .attr('class', 'debugInfo')
+        .append('path')
         .attr('fill', 'none')
         .attr('stroke', 'red')
-        .attr('r', d => d);
+        .attr('stroke-width', 0.5)
+        .attr('d', lineFn);
+
 }
 
-function drawExternalLabels(selection, items, config) {
+function drawItemLabels(selection, items, config) {
 
-    let group = selection.select('g.externalLabels').empty() ? selection.append('g') : selection.select('g.externalLabels');
+    let group = selection.select('g.itemsLabels').empty() ? selection.append('g') : selection.select('g.itemsLabels');
 
     let arcLabel = d3.arc()
-        .outerRadius(config.maxR)
-        .innerRadius(config.maxR)
-        .startAngle(d => config.scaleRadial(d))
-        .endAngle(d => config.scaleRadial(d + 1));
+        .outerRadius(config.radiusMax)
+        .innerRadius(config.radiusMax)
+        .startAngle(d => config.scaleRadialPosition(d))
+        .endAngle(d => config.scaleRadialPosition(d));
 
-    group.selectAll('.segmentLabel')
+    group.selectAll('.itemLabel')
         .data(items)
         .enter()
         .append('text')
-        .attr('class', 'segmentLabel')
+        .attr('class', 'itemLabel')
+        .attr('alignment-baseline', 'middle')
         .attr('transform', (d, idx) => {
-            let startAngle = config.scaleRadial(idx);
-            let endAngle = config.scaleRadial(idx + 1);
-            let midAngle = endAngle < Math.PI ? startAngle / 2 + endAngle / 2 : startAngle / 2 + endAngle / 2 + Math.PI;
-            return `translate(${arcLabel.centroid(idx)[0]} , ${arcLabel.centroid(idx)[1]}) rotate(-90) rotate(${(midAngle * 180 / Math.PI)})`;
+            let startAngle = config.scaleRadialPosition(idx);
+            let endAngle = config.scaleRadialPosition(idx);
+
+            let midAngle = endAngle;//endAngle < PI ? (startAngle + endAngle) / 2 : (startAngle + endAngle) / 2 + PI;
+            // let midAngle = endAngle < PI ? (startAngle + endAngle) / 2: (startAngle + endAngle) / 2;
+
+            return `translate(${arcLabel.centroid(idx)[0]} , ${arcLabel.centroid(idx)[1]}) rotate(${rad2deg(midAngle) - 90}) rotate(${midAngle > PI ? -180 : 0})`;
         })
         .attr('text-anchor', (d, idx) => {
-            return config.scaleRadial(idx + 1) < Math.PI ? 'start' : 'end';
+            return config.scaleRadialPosition(idx) < PI ? 'start' : 'end';
         })
-        .attr('dy', '.35em')
         .text(d => `${!!d._isNew ? '* ' : ''} ${d.name}`);
 }
 
-function drawExternalAreaLabels(selection, data, config) {
+function drawAreaLebels(selection, data, config) {
 
-    let group = selection.select('g.externalAreaLabels').empty() ? selection.append('g') : selection.select('g.externalAreaLabels');
+    let group = selection.select('g.areaLabels').empty() ? selection.append('g') : selection.select('g.areaLabels');
 
     let areasData = Object.keys(data.areas)
         .map(area => Object.assign(data.areas[area], {
             name: area
         }))
         .map((area, idx, arr) => {
-            area._startAngle = config.scaleRadial(arr.reduce((total, curr, idxArea) => {
-                return idxArea < idx ? total + curr.count : total;
+            // console.log('area', area);
+            // console.log('idx', idx);
+            // console.log('idx', idx < arr.length-1 ? 1 : 0);
+
+            //area.startAngle
+
+            area.startAngle = config.scaleRadialPosition(arr.reduce((total, curr, idxArea) => {
+                return idxArea < idx ? total + (curr.count) : total;
             }, 0));
 
-            area._endAngle = config.scaleRadial(arr.reduce((total, curr, idxArea) => {
-                    return idxArea < idx ? total + curr.count : total;
-                }, 0) + area.count);
+            // area.endAngle = config.scaleRadialPosition(arr.reduce((total, curr, idxArea) => {
+            //         return idxArea < idx ? total + curr.count : total;
+            //     }, idx > 0 ? -1 : 0) + area.count);
+
+            area.endAngle = config.scaleRadialPosition(arr.reduce((total, curr, idxArea) => {
+                return idxArea < idx ? total + curr.count : total;
+            }, -1) + area.count);
 
             return area;
         });
 
     let arc = d3.arc()
-        .innerRadius(config.circle_area)
-        .outerRadius(config.circle_area + config.circle_area_width)
-        .startAngle(d => d._startAngle)
-        .endAngle(d => d._endAngle)
-        .padAngle(0.01);
+        .innerRadius(config.radiusMax - 20)
+        .outerRadius(config.radiusMax - 23)
+        .startAngle(d => d.startAngle)
+        .endAngle(d => d.endAngle)
+        // .padAngle(deg2rad(10));
 
     group.selectAll('.areaFill')
         .data(areasData)
@@ -182,57 +163,14 @@ function drawExternalAreaLabels(selection, data, config) {
         .attr('class', 'areaFill')
         .attr('fill', d => d.color)
         .attr('d', arc)
-        .transition()
-        .duration(750)
-        .attrTween('d', arcTween(arc));
+        // .transition()
+        // .duration(750)
+        //.attrTween('d', arcTween(arc));
 
-    // --- area labels: base path
-    group
-        .selectAll('.areaLabelArc')
-        .data(areasData)
-        .enter()
-        .append('path')
-        .attr('id', (d, idx) => 'areaLabel_' + idx)
-        .attr('class', 'areaLabelArc')
-        .attr('d', (d, idx) => {
-            let baseAngle = -Math.PI / 2;
-            let padAngle = 0.01;
-            let radius = config.circle_area;// - (CIRCLE_AREA_WIDTH/2);
-
-            let startAngle = config.scaleRadial(areasData.reduce((total, curr, idxArea) => {
-                    return idxArea < idx ? total + curr.count : total;
-                }, 0)) + padAngle;
-
-            let endAngle = config.scaleRadial(areasData.reduce((total, curr, idxArea) => {
-                        return idxArea < idx ? total + curr.count : total;
-                    }, 0) + d.count) - padAngle;
-
-            let pStart = [radius * Math.cos(baseAngle + startAngle), radius * Math.sin(baseAngle + startAngle)];
-            let pEnd = [radius * Math.cos(baseAngle + endAngle), radius * Math.sin(baseAngle + endAngle)];
-
-            return `M ${pStart[0]},${pStart[1]} A ${radius},${radius} 0 0 1 ${pEnd[0]},${pEnd[1]}`;
-        });
-
-    // --- area labels: text
-    group.selectAll('.areaLabel')
-        .data(areasData)
-        .enter()
-        .append('text')
-        .attr('class', 'areaLabel')
-        .attr('x', 5)
-        .attr('dy', -5)
-        .attr('text-anchor', 'middle')
-        .append('textPath')
-        .attr('xlink:href', (d, idx) => '#areaLabel_' + idx)
-        .attr('startOffset', '50%')
-        .text((d) => d.name);
-}
-
-function drawInnerTechnologies(selection, data, config) {
 
 }
 
-
+// --- data functions
 function processData(rawData) {
     let data = {
         areas: {}
@@ -246,8 +184,8 @@ function processData(rawData) {
         })
     ]
         .sort(function(a, b) {
-            return d3.ascending(a.area, b.area) ||
-                d3.ascending(a.name, b.name);
+            return d3.ascending(a.area.toLowerCase(), b.area.toLowerCase()) ||
+                d3.ascending(a.name.toLowerCase(), b.name.toLowerCase());
         })
         .map((d, idx) => {
             d._pos = idx;
@@ -271,60 +209,78 @@ function processData(rawData) {
 function getData() {
     return fetch(URL).then(response => response.json());
 }
-function rad2deg(rad) {
-    return rad * (180 / Math.PI);
-}
-function deg2rad(rad) {
-    return rad * (Math.PI / 180);
-}
-function arcTween(arc) {
-    return function(d) {
-        let i = d3.interpolate(d._startAngle, d._endAngle);
-        return function(t) {
-            return arc({
-                _startAngle: d._startAngle,
-                _endAngle: i(t)
-            });
-        };
-    }
-}
-function getConfig(containerEl, data) {
-    const {
-        width,
-        height
-    } = containerEl.node().getBoundingClientRect();
 
-    let bound = Math.min(width, height);
-    let maxR = 0.5 * bound * 0.75;
+// --- helpers
+function getTextLength(str, selection) {
+    let textElement = selection
+        .append('text')
+        .attr('x', 100)
+        .attr('y', 100)
+        .attr('class', 'itemLabel')
+        .text(str);
+
+    let width = textElement.node().getComputedTextLength();
+    textElement.remove();
+
+    return width;
+}
+
+function rad2deg(rad) {
+    return rad * (180/PI);
+}
+
+function deg2rad(deg) {
+    return deg * (PI/180);
+}
+
+function getConfig(containerEl, items) {
+    const width = 1000;
+    const height = 1000;
+    const legendReserverAngle = 15;
+    const baseAngle = PI / 2;
+
+    const count = items.length;
+
+    const bound = Math.min(width, height);
 
     const center = {
-        x: Math.floor(width / 2),
-        y: Math.floor(height / 2)
+        x: 500,
+        y: 500
     };
 
-    const circle_reserved = maxR * 0.4;
-    const circle_area = maxR * 0.925;
-    const circle_area_width = 20;
-    const circle_area_label_padding = 10;
+    // --- estimate length of longest technology
+    const longestLabel = items
+        .map(item => item.name)
+        .sort((a, b) => (a.length - b.length))
+        .reverse()[0];
 
-    const circle_level_padding = 25;
-    const circle_level_outer = circle_area - circle_level_padding;
-    const circle_level_inner = circle_reserved + 20;//CIRCLE_AREA - CIRCLE_AREA_WIDTH - CIRCLE_LEVEL_PADDING - 4 * CIRCLE_LEVEL_WIDTH;
+    const longestLabelWidth = getTextLength(longestLabel, containerEl);
 
-    const scaleRadial = d3.scaleLinear()
-        .range([0, 2 * Math.PI])
-        .domain([0, data.items.length]);
+    const radiusMax = 0.5 * 0.98 * (bound - longestLabelWidth);
+
+    // --- angles calculcation with reserved space
+    const angleStart = deg2rad(legendReserverAngle);
+    const angleEnd = deg2rad(360-legendReserverAngle); // 2 * PI === 360
+    const angleStep = (angleEnd - angleStart) / items.length;
+    // const angleStep = (PI * 2) / items.length;// (angleEnd - angleStart) / items.length;
+
+    const scaleRadialPosition = d3.scaleLinear()
+        .range([angleStart, angleEnd])
+        .domain([0, items.length]);
+
+    const scaleRadialPositionWithBaseShift = d3.scaleLinear()
+        .range([angleStart - baseAngle, angleEnd - baseAngle])
+        .domain([0, items.length]);
 
     return {
-        maxR,
+        count,
+        radiusMax,
         center,
-        circle_reserved,
-        circle_area,
-        circle_area_width,
-        circle_area_label_padding,
-        circle_level_outer,
-        circle_level_inner,
-        scaleRadial
+        scaleRadialPosition,
+        scaleRadialPositionWithBaseShift,
+        angleStart,
+        angleEnd,
+        angleStep
     }
 }
 
